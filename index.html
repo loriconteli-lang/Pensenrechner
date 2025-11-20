@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GL Pensumsrechner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f3f4f6;
+      }
+      input[type=range] {
+        accent-color: #b91c1c; 
+      }
+      @media print {
+        body {
+          background-color: white;
+          print-color-adjust: exact;
+          -webkit-print-color-adjust: exact;
+        }
+        /* Ensure standard page margins */
+        @page {
+          size: A4;
+          margin: 0;
+        }
+        /* Hide everything by default */
+        #root > * {
+          display: none;
+        }
+        /* Show Report View specifically */
+        #root > div:has(.print\:fixed) {
+          display: block !important;
+        }
+        /* If React structure differs, rely on Tailwind 'print:hidden' in components 
+           plus ReportView specific styles */
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
