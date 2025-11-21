@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { GlobalSettings, SpecialFunction, TeacherData, RoleType, Municipality } from '../types';
-import { Calculator, User, Building2, LayoutGrid, Clock } from 'lucide-react';
+import { User, Building2, LayoutGrid, Clock } from 'lucide-react';
 import { ProgressBar } from './ProgressBar';
 import { calculatePensum } from '../utils/calculations';
 
@@ -43,7 +43,18 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
     if (expectedStandard && !newActive.includes(expectedStandard)) {
       if (specialFunctions.find(f => f.id === expectedStandard)) {
         newActive.push(expectedStandard);
-        changed = true;
+        
+        // Initialize config if missing
+        const defaultConfig = teacherData.functionConfig[expectedStandard] || { hours: specialFunctions.find(f => f.id === expectedStandard)?.hours || 0 };
+        onUpdateTeacherData({
+           ...teacherData,
+           activeSpecialFunctions: [...newActive],
+           functionConfig: {
+             ...teacherData.functionConfig,
+             [expectedStandard]: defaultConfig
+           }
+        });
+        return; // Early return because we called update
       }
     }
 
@@ -72,16 +83,45 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
   };
 
   const handleManualCorrection = (categoryName: string, value: string) => {
-    const numValue = parseFloat(value) || 0;
+    const numValue = parseFloat(value);
     const newCorrections = { ...teacherData.manualCorrections };
     
-    if (numValue === 0) {
+    if (isNaN(numValue) || value === '') {
       delete newCorrections[categoryName];
     } else {
       newCorrections[categoryName] = numValue;
     }
     
     onUpdateTeacherData({ ...teacherData, manualCorrections: newCorrections });
+  };
+
+  const handleFunctionHourChange = (id: string, hours: number) => {
+    onUpdateTeacherData({
+      ...teacherData,
+      functionConfig: {
+        ...teacherData.functionConfig,
+        [id]: {
+          ...teacherData.functionConfig[id],
+          hours: hours
+        }
+      }
+    });
+  };
+
+  const handleSHPSingleClassChange = (isChecked: boolean) => {
+    const shpId = 'sf-shp';
+    const newHours = isChecked ? 60 : 120;
+    
+    onUpdateTeacherData({
+      ...teacherData,
+      functionConfig: {
+        ...teacherData.functionConfig,
+        [shpId]: {
+          hours: newHours,
+          meta: { isSingleClass: isChecked }
+        }
+      }
+    });
   };
 
   const filteredSpecialFunctions = specialFunctions.filter(sf => 
@@ -207,29 +247,70 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {filteredSpecialFunctions.map((func) => {
               const isActive = teacherData.activeSpecialFunctions.includes(func.id);
+              const config = teacherData.functionConfig[func.id] || { hours: func.hours };
+              
+              // Determine if we should show input for hours (for KLP/SHP/FLP standard functions)
+              const isEditableStandard = func.isStandard && (func.id === 'sf-klp' || func.id === 'sf-shp' || func.id === 'sf-flp');
+
               return (
                 <div 
                   key={func.id}
                   className={`
-                    relative border rounded-md p-3 cursor-pointer transition-all hover:shadow-md
+                    relative border rounded-md p-3 transition-all hover:shadow-md
                     ${isActive ? 'border-red-200 bg-red-50/30' : 'border-gray-200 bg-white'}
                   `}
-                  onClick={() => !func.isStandard && toggleSpecialFunction(func.id, !isActive)}
                 >
                    <div className="flex items-start gap-3">
-                      <div className={`
-                        mt-0.5 w-4 h-4 rounded border flex items-center justify-center shrink-0
-                        ${isActive ? 'bg-red-600 border-red-600 text-white' : 'border-gray-300 bg-white'}
-                        ${func.isStandard ? 'opacity-50 cursor-not-allowed' : ''}
-                      `}>
+                      {/* Checkbox mainly for non-standard functions, standard ones are auto-selected via logic but can be rendered differently */}
+                      <div 
+                        onClick={() => !func.isStandard && toggleSpecialFunction(func.id, !isActive)}
+                        className={`
+                          mt-0.5 w-4 h-4 rounded border flex items-center justify-center shrink-0 cursor-pointer
+                          ${isActive ? 'bg-red-600 border-red-600 text-white' : 'border-gray-300 bg-white'}
+                          ${func.isStandard ? 'opacity-50 cursor-not-allowed' : ''}
+                        `}
+                      >
                         {isActive && <div className="w-2 h-2 bg-white rounded-full" />}
                       </div>
+                      
                       <div className="flex-1">
-                         <div className="text-sm font-medium text-gray-800 leading-tight">{func.name}</div>
-                         <div className="text-[10px] text-gray-500 mt-1 flex gap-2">
-                            <span>{func.hours}h</span>
-                            {func.reliefLessons > 0 && <span className="text-red-500 font-medium">+{func.reliefLessons} WL Entl.</span>}
+                         <div className="flex justify-between items-start">
+                             <div className="text-sm font-medium text-gray-800 leading-tight">{func.name}</div>
+                             {isEditableStandard && isActive && (
+                                <div className="flex items-center gap-1 ml-2">
+                                    <input
+                                        type="number"
+                                        value={config.hours}
+                                        onChange={(e) => handleFunctionHourChange(func.id, parseFloat(e.target.value) || 0)}
+                                        className="w-12 h-6 text-right text-xs border border-gray-300 rounded focus:border-red-500 outline-none px-1"
+                                    />
+                                    <span className="text-xs text-gray-500">h</span>
+                                </div>
+                             )}
                          </div>
+
+                         {/* SHP Specific Single Class Toggle */}
+                         {func.id === 'sf-shp' && isActive && (
+                            <div className="mt-2 flex items-center gap-2">
+                                <input 
+                                    type="checkbox" 
+                                    id="shp-single-class"
+                                    checked={config.meta?.isSingleClass || false}
+                                    onChange={(e) => handleSHPSingleClassChange(e.target.checked)}
+                                    className="w-3 h-3 text-red-600 rounded border-gray-300 focus:ring-red-500"
+                                />
+                                <label htmlFor="shp-single-class" className="text-xs text-gray-600 cursor-pointer select-none">
+                                    Nur 1 Klasse (max. 60h)
+                                </label>
+                            </div>
+                         )}
+
+                         {!isEditableStandard && (
+                             <div className="text-[10px] text-gray-500 mt-1 flex gap-2">
+                                <span>{func.hours}h</span>
+                                {func.reliefLessons > 0 && <span className="text-red-500 font-medium">+{func.reliefLessons} WL Entl.</span>}
+                             </div>
+                         )}
                       </div>
                    </div>
                 </div>
@@ -243,7 +324,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">Bemerkungen</label>
            <textarea 
               value={teacherData.remarks}
-              onChange={(e) => onUpdateTeacherData({...teacherData, remarks: e.target.value})}
+              onChange={(e) => onUpdateTeacherData({...teacherData,remarks: e.target.value})}
               className="w-full p-3 border border-gray-200 rounded text-sm focus:border-red-500 outline-none min-h-[80px]"
               placeholder="Besondere Vereinbarungen..."
            />
@@ -300,7 +381,8 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
               <tbody className="divide-y divide-gray-100">
                  {finalDistribution.map(cat => {
                    const isEditable = cat.name !== 'Unterricht und Klasse';
-                   const manualVal = teacherData.manualCorrections[cat.name] || '';
+                   const manualVal = teacherData.manualCorrections[cat.name];
+                   const displayVal = manualVal !== undefined ? manualVal : '';
                    
                    return (
                     <tr key={cat.name}>
@@ -310,7 +392,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
                           {isEditable ? (
                             <input 
                               type="number" 
-                              value={manualVal}
+                              value={displayVal}
                               onChange={(e) => handleManualCorrection(cat.name, e.target.value)}
                               placeholder="0"
                               className="w-16 px-1 py-1 text-right border border-gray-200 rounded text-xs focus:border-red-500 focus:ring-1 focus:ring-red-200 outline-none transition-all bg-gray-50 focus:bg-white"
@@ -329,6 +411,9 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
                  </tr>
               </tbody>
             </table>
+            <div className="px-4 py-2 text-[10px] text-gray-400 italic bg-gray-50 border-t border-gray-100">
+                Hinweis: Manuelle Korrekturen werden direkt zu den Stunden addiert/subtrahiert.
+            </div>
         </div>
       </div>
     </div>

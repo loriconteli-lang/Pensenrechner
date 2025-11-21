@@ -15,16 +15,13 @@ export const calculatePensum = (
 ): CalculatedData => {
   
   // 1. Determine Lesson Factor based on Role
-  // KLP: (1890 - 120h KV) / 26 Lektionen = ~68.07h per lesson
-  // FLP/SHP: 1890 / 28 Lektionen = 67.5h per lesson
-  
   let hoursPerLesson = 0;
   
   if (teacherData.role === 'KLP') {
-    // Assuming KLP always has the standard KV function (120h) which is added separately via SpecialFunctions
-    // So the base lessons account for the rest (1770h)
+    // KLP base factor calculation (1890 - 120) / 26
     hoursPerLesson = (settings.annualHours - 120) / settings.baseLessons.KLP;
   } else {
+    // Standard calculation for others
     hoursPerLesson = settings.annualHours / settings.baseLessons[teacherData.role];
   }
 
@@ -51,9 +48,16 @@ export const calculatePensum = (
     const func = specialFunctions.find(f => f.id === sfId);
     if (func) {
       const category = distribution.find(c => c.name === func.workField);
+      
+      // Use configured hours if available, otherwise default
+      let hoursToAdd = func.hours;
+      if (teacherData.functionConfig && teacherData.functionConfig[sfId]) {
+         hoursToAdd = teacherData.functionConfig[sfId].hours;
+      }
+
       if (category) {
-        category.hours += func.hours;
-        category.correction = (category.correction || 0) + func.hours;
+        category.hours += hoursToAdd;
+        category.correction = (category.correction || 0) + hoursToAdd;
       }
     }
   });

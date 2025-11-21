@@ -21,6 +21,14 @@ export interface SpecialFunction {
   isStandard?: boolean; 
 }
 
+export interface SpecialFunctionConfig {
+  hours: number;
+  meta?: {
+    isSingleClass?: boolean; // Specific for SHP
+    [key: string]: any;
+  };
+}
+
 export interface TeacherData {
   municipality: Municipality;
   lastName: string;
@@ -28,14 +36,15 @@ export interface TeacherData {
   role: RoleType;
   teachingLessons: number;
   activeSpecialFunctions: string[]; // IDs of selected functions
+  functionConfig: Record<string, SpecialFunctionConfig>; // Store individual hours/settings per function ID
   manualCorrections: Record<string, number>; // Key: Category Name, Value: +/- Hours
   remarks: string;
 }
 
 export interface DistributionCategory {
   name: string;
-  hours: number;
+  hours: number; // Total hours including base + functions + corrections
   color: string;
-  correction?: number; // Includes special functions + manual
-  manualCorrectionOnly?: number; // For display purposes separate from functional hours
+  correction?: number; // Sum of special functions hours + manual corrections
+  manualCorrectionOnly?: number; // Only the manual part for display
 }

@@ -136,18 +136,27 @@ export const ReportView: React.FC<ReportViewProps> = ({
            <h3 className="text-sm font-bold uppercase text-gray-500 mb-3 border-b border-gray-200 pb-1">Spezialfunktionen & Ämtli</h3>
           {activeFunctions.length > 0 ? (
             <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-              {activeFunctions.map(sf => (
-                 <div key={sf.id} className="flex justify-between items-start py-2 border-b border-dotted border-gray-200 text-sm">
-                    <div>
-                      <span className="font-medium text-gray-800 block">{sf.name}</span>
-                      <span className="text-xs text-gray-500">{sf.workField}</span>
-                    </div>
-                    <div className="text-right">
-                       <span className="font-bold block">{sf.hours} h</span>
-                       {sf.reliefLessons > 0 && <span className="text-xs text-gray-500">{sf.reliefLessons} WL Entlastung</span>}
-                    </div>
-                 </div>
-              ))}
+              {activeFunctions.map(sf => {
+                 const config = teacherData.functionConfig && teacherData.functionConfig[sf.id];
+                 const effectiveHours = config ? config.hours : sf.hours;
+                 const isSingleClass = config?.meta?.isSingleClass;
+
+                 return (
+                     <div key={sf.id} className="flex justify-between items-start py-2 border-b border-dotted border-gray-200 text-sm">
+                        <div>
+                          <span className="font-medium text-gray-800 block">
+                              {sf.name}
+                              {isSingleClass && <span className="ml-2 text-xs text-gray-500 italic">(Nur 1 Klasse)</span>}
+                          </span>
+                          <span className="text-xs text-gray-500">{sf.workField}</span>
+                        </div>
+                        <div className="text-right">
+                           <span className="font-bold block">{effectiveHours} h</span>
+                           {sf.reliefLessons > 0 && <span className="text-xs text-gray-500">{sf.reliefLessons} WL Entlastung</span>}
+                        </div>
+                     </div>
+                 );
+              })}
             </div>
           ) : (
             <p className="text-gray-500 italic text-sm py-2">Keine zusätzlichen Funktionen.</p>

@@ -10,7 +10,6 @@ export const DEFAULT_SETTINGS: GlobalSettings = {
 };
 
 // Standard distribution percentages according to PDF model (Page 23)
-// Used to distribute the calculated annual hours into categories
 export const DISTRIBUTION_SHARES = {
   'Unterricht und Klasse': 0.82,
   'Lernende und Schulpartner': 0.07,
@@ -23,7 +22,7 @@ export const INITIAL_SPECIAL_FUNCTIONS: SpecialFunction[] = [
     id: 'sf-klp',
     name: 'Klassenverantwortung (Standard)',
     reliefLessons: 0,
-    hours: 120,
+    hours: 120, // Max 120h
     workField: 'Unterricht und Klasse',
     allowedRoles: 'KLP',
     isStandard: true,
@@ -32,7 +31,7 @@ export const INITIAL_SPECIAL_FUNCTIONS: SpecialFunction[] = [
     id: 'sf-shp',
     name: 'Koordination & Absprachen (SHP)',
     reliefLessons: 0,
-    hours: 0, // Often integrated or handled via lower factor? Keeping 0 and relying on base lessons unless specified otherwise
+    hours: 120, // Max 120h, reduces to 60h if single class
     workField: 'Unterricht und Klasse',
     allowedRoles: 'SHP',
     isStandard: true,
@@ -41,7 +40,7 @@ export const INITIAL_SPECIAL_FUNCTIONS: SpecialFunction[] = [
     id: 'sf-flp',
     name: 'Absprachen Fachlehrperson',
     reliefLessons: 0,
-    hours: 0,
+    hours: 60, // Max 60h
     workField: 'Unterricht und Klasse',
     allowedRoles: 'FLP',
     isStandard: true,
@@ -50,7 +49,7 @@ export const INITIAL_SPECIAL_FUNCTIONS: SpecialFunction[] = [
     id: 'sf-picts',
     name: 'IT-Support / PICTS',
     reliefLessons: 1,
-    hours: 63, // Approx 1890/30
+    hours: 63,
     workField: 'Schule',
     allowedRoles: 'Alle',
   },
@@ -58,7 +57,7 @@ export const INITIAL_SPECIAL_FUNCTIONS: SpecialFunction[] = [
     id: 'sf-age',
     name: 'Altersentlastung (ab 60. Altersjahr)',
     reliefLessons: 2,
-    hours: 0, // Reduces load, no extra hours added usually, but counts as work time
+    hours: 0, 
     workField: 'Lehrperson', 
     allowedRoles: 'Alle',
   },
@@ -95,6 +94,11 @@ export const INITIAL_TEACHER_DATA: TeacherData = {
   role: 'KLP',
   teachingLessons: 26,
   activeSpecialFunctions: ['sf-klp'],
+  functionConfig: {
+    'sf-klp': { hours: 120 },
+    'sf-shp': { hours: 120, meta: { isSingleClass: false } },
+    'sf-flp': { hours: 60 },
+  },
   manualCorrections: {},
   remarks: '',
 };
