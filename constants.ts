@@ -1,3 +1,4 @@
+
 import { GlobalSettings, SpecialFunction, TeacherData } from './types';
 
 export const DEFAULT_SETTINGS: GlobalSettings = {
@@ -49,17 +50,19 @@ export const INITIAL_SPECIAL_FUNCTIONS: SpecialFunction[] = [
     id: 'sf-picts',
     name: 'IT-Support / PICTS',
     reliefLessons: 1,
-    hours: 63,
+    hours: 60, // 1 WL = 60h
     workField: 'Schule',
     allowedRoles: 'Alle',
+    inputUnit: 'Lektionen'
   },
   {
     id: 'sf-age',
-    name: 'Altersentlastung (ab 60. Altersjahr)',
-    reliefLessons: 2,
+    name: 'Altersentlastung',
+    reliefLessons: 0, // Calculated dynamically based on birth year
     hours: 0, 
     workField: 'Lehrperson', 
     allowedRoles: 'Alle',
+    inputUnit: 'Lektionen' // Shown as lessons
   },
   {
     id: 'sf-health',
@@ -73,9 +76,19 @@ export const INITIAL_SPECIAL_FUNCTIONS: SpecialFunction[] = [
     id: 'sf-mentor',
     name: 'Mentor/in Berufseinstieg',
     reliefLessons: 0.5,
-    hours: 30,
+    hours: 30, // 0.5 WL = 30h
     workField: 'Lehrperson',
     allowedRoles: 'Alle',
+    inputUnit: 'Lektionen'
+  },
+  {
+    id: 'sf-media',
+    name: 'Medienmentorat',
+    reliefLessons: 1,
+    hours: 60,
+    workField: 'Schule',
+    allowedRoles: 'Alle',
+    inputUnit: 'Lektionen'
   },
   {
     id: 'sf-bgm',
@@ -91,6 +104,7 @@ export const INITIAL_TEACHER_DATA: TeacherData = {
   municipality: 'Glarus',
   lastName: '',
   firstName: '',
+  birthYear: 1985, // Default
   role: 'KLP',
   teachingLessons: 26,
   activeSpecialFunctions: ['sf-klp'],
@@ -99,6 +113,7 @@ export const INITIAL_TEACHER_DATA: TeacherData = {
     'sf-shp': { hours: 120, meta: { isSingleClass: false } },
     'sf-flp': { hours: 60 },
   },
+  customFunctions: [],
   manualCorrections: {},
   remarks: '',
 };

@@ -1,3 +1,4 @@
+
 import { TeacherData, GlobalSettings, SpecialFunction, DistributionCategory } from '../types';
 import { DISTRIBUTION_SHARES } from '../constants';
 
@@ -43,26 +44,69 @@ export const calculatePensum = (
     { name: 'Lehrperson', hours: baseHoursByField['Lehrperson'], color: 'bg-yellow-400' },
   ];
 
+  // Reference Year for Age Calculation (School Year 2025/26 -> 2025)
+  const referenceYear = 2025;
+  const age = referenceYear - teacherData.birthYear;
+
   // 4. Apply Special Functions
   teacherData.activeSpecialFunctions.forEach(sfId => {
     const func = specialFunctions.find(f => f.id === sfId);
     if (func) {
       const category = distribution.find(c => c.name === func.workField);
       
-      // Use configured hours if available, otherwise default
-      let hoursToAdd = func.hours;
-      if (teacherData.functionConfig && teacherData.functionConfig[sfId]) {
-         hoursToAdd = teacherData.functionConfig[sfId].hours;
+      // Determine Hours
+      let hoursToAdd = 0;
+
+      // Special Case: Altersentlastung (sf-age)
+      if (sfId === 'sf-age') {
+        let reliefLessons = 0;
+        if (age >= 60) {
+          reliefLessons = 3;
+        } else if (age >= 55) {
+          reliefLessons = 1;
+        }
+        // 1 WL = 60h for relief in Glarus model (Context from prompt)
+        hoursToAdd = reliefLessons * 60;
+      } else {
+        // Normal Logic
+        const config = teacherData.functionConfig && teacherData.functionConfig[sfId];
+        
+        if (config) {
+           // Use manually entered hours (or calculation based on meta)
+           hoursToAdd = config.hours;
+        } else {
+           // Fallback to defaults
+           if (func.inputUnit === 'Lektionen') {
+              // If no config but unit is lessons, use default reliefLessons * 60
+              hoursToAdd = func.reliefLessons * 60;
+           } else {
+              hoursToAdd = func.hours;
+           }
+        }
       }
 
-      if (category) {
+      if (category && hoursToAdd > 0) {
         category.hours += hoursToAdd;
         category.correction = (category.correction || 0) + hoursToAdd;
       }
     }
   });
 
-  // 5. Apply Manual Corrections
+  // 5. Apply Custom Functions (User Defined)
+  teacherData.customFunctions.forEach(cf => {
+    const category = distribution.find(c => c.name === cf.workField);
+    if (category) {
+      // Convert lessons to hours if needed (Factor 60 based on previous logic)
+      const hoursToAdd = cf.unit === 'Lektionen' ? cf.value * 60 : cf.value;
+      
+      if (hoursToAdd > 0) {
+        category.hours += hoursToAdd;
+        category.correction = (category.correction || 0) + hoursToAdd;
+      }
+    }
+  });
+
+  // 6. Apply Manual Corrections
   distribution.forEach(category => {
     const manualCorrection = teacherData.manualCorrections[category.name] || 0;
     if (manualCorrection !== 0) {
@@ -72,7 +116,7 @@ export const calculatePensum = (
     }
   });
 
-  // 6. Totals
+  // 7. Totals
   const totalHours = distribution.reduce((acc, curr) => acc + curr.hours, 0);
   const pensumPercentage = (totalHours / settings.annualHours) * 100;
 

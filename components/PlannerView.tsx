@@ -1,6 +1,7 @@
+
 import React, { useEffect } from 'react';
-import { GlobalSettings, SpecialFunction, TeacherData, RoleType, Municipality } from '../types';
-import { User, Building2, LayoutGrid, Clock } from 'lucide-react';
+import { GlobalSettings, SpecialFunction, TeacherData, RoleType, Municipality, InputUnit, WorkField, CustomFunction } from '../types';
+import { User, Building2, LayoutGrid, Clock, Plus, Trash2, X } from 'lucide-react';
 import { ProgressBar } from './ProgressBar';
 import { calculatePensum } from '../utils/calculations';
 
@@ -18,11 +19,16 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
   onUpdateTeacherData,
 }) => {
   
+  // Reference Year for age calculation
+  const CURRENT_YEAR = 2025;
+  const age = CURRENT_YEAR - teacherData.birthYear;
+
   // Auto-select standard function if role changes
   useEffect(() => {
     let newActive = [...teacherData.activeSpecialFunctions];
     let changed = false;
 
+    // 1. Standard Roles (KLP/SHP/FLP)
     const standardFuncs: Record<RoleType, string> = {
       'KLP': 'sf-klp',
       'SHP': 'sf-shp',
@@ -43,7 +49,6 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
     if (expectedStandard && !newActive.includes(expectedStandard)) {
       if (specialFunctions.find(f => f.id === expectedStandard)) {
         newActive.push(expectedStandard);
-        
         // Initialize config if missing
         const defaultConfig = teacherData.functionConfig[expectedStandard] || { hours: specialFunctions.find(f => f.id === expectedStandard)?.hours || 0 };
         onUpdateTeacherData({
@@ -58,10 +63,23 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
       }
     }
 
+    // 2. Age Relief (Altersentlastung)
+    const ageReliefId = 'sf-age';
+    const isEligibleForAgeRelief = age >= 55;
+    const hasAgeRelief = newActive.includes(ageReliefId);
+
+    if (isEligibleForAgeRelief && !hasAgeRelief) {
+      newActive.push(ageReliefId);
+      changed = true;
+    } else if (!isEligibleForAgeRelief && hasAgeRelief) {
+      newActive = newActive.filter(id => id !== ageReliefId);
+      changed = true;
+    }
+
     if (changed) {
       onUpdateTeacherData({ ...teacherData, activeSpecialFunctions: newActive });
     }
-  }, [teacherData.role, specialFunctions]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [teacherData.role, teacherData.birthYear, specialFunctions]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Calculations
   const { distribution: finalDistribution, totalHours, pensumPercentage } = calculatePensum(
@@ -95,7 +113,11 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
     onUpdateTeacherData({ ...teacherData, manualCorrections: newCorrections });
   };
 
-  const handleFunctionHourChange = (id: string, hours: number) => {
+  const handleFunctionHourChange = (id: string, val: number, unit: InputUnit = 'Stunden') => {
+    // Convert input to hours for storage
+    // If unit is 'Lektionen', factor is 60
+    const hours = unit === 'Lektionen' ? val * 60 : val;
+
     onUpdateTeacherData({
       ...teacherData,
       functionConfig: {
@@ -124,6 +146,36 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
     });
   };
 
+  const handleAddCustomFunction = () => {
+    const newCustom: CustomFunction = {
+      id: `custom-${Date.now()}`,
+      name: 'Neue Aufgabe',
+      value: 0,
+      unit: 'Stunden',
+      workField: 'Schule'
+    };
+    onUpdateTeacherData({
+      ...teacherData,
+      customFunctions: [...teacherData.customFunctions, newCustom]
+    });
+  };
+
+  const handleUpdateCustomFunction = (id: string, field: keyof CustomFunction, value: any) => {
+    onUpdateTeacherData({
+      ...teacherData,
+      customFunctions: teacherData.customFunctions.map(cf => 
+        cf.id === id ? { ...cf, [field]: value } : cf
+      )
+    });
+  };
+
+  const handleDeleteCustomFunction = (id: string) => {
+    onUpdateTeacherData({
+      ...teacherData,
+      customFunctions: teacherData.customFunctions.filter(cf => cf.id !== id)
+    });
+  };
+
   const filteredSpecialFunctions = specialFunctions.filter(sf => 
     sf.allowedRoles === 'Alle' || sf.allowedRoles === teacherData.role
   );
@@ -143,8 +195,8 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
              <h2 className="font-semibold text-sm uppercase tracking-wide">Personaldaten</h2>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-             <div className="sm:col-span-1">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+             <div className="sm:col-span-4 md:col-span-1">
                 <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Gemeinde</label>
                 <div className="relative">
                   <select
@@ -159,7 +211,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
                   <Building2 size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"/>
                 </div>
              </div>
-             <div className="sm:col-span-2 grid grid-cols-2 gap-3">
+             <div className="sm:col-span-4 md:col-span-3 grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Name</label>
                   <input 
@@ -178,6 +230,16 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
                     onChange={(e) => onUpdateTeacherData({...teacherData, firstName: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-200 rounded text-sm focus:border-red-500 outline-none"
                     placeholder="Vorname"
+                  />
+                </div>
+                 <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Jahrgang</label>
+                  <input 
+                    type="number" 
+                    value={teacherData.birthYear}
+                    onChange={(e) => onUpdateTeacherData({...teacherData, birthYear: parseInt(e.target.value) || 1980})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded text-sm focus:border-red-500 outline-none text-center"
+                    placeholder="YYYY"
                   />
                 </div>
              </div>
@@ -237,20 +299,32 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
           </div>
         </div>
 
-        {/* 3. Special Functions Grid */}
+        {/* 3. Special Functions & Tasks Grid */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-           <div className="flex items-center gap-2 mb-4 text-gray-800">
-             <LayoutGrid size={18} className="text-red-600" />
-             <h2 className="font-semibold text-sm uppercase tracking-wide">Spezialfunktionen</h2>
+           <div className="flex items-center justify-between mb-4 text-gray-800">
+              <div className="flex items-center gap-2">
+                 <LayoutGrid size={18} className="text-red-600" />
+                 <h2 className="font-semibold text-sm uppercase tracking-wide">Spezialfunktionen & Aufgaben</h2>
+              </div>
+              <button 
+                onClick={handleAddCustomFunction}
+                className="flex items-center gap-1 text-[10px] font-bold uppercase text-blue-600 bg-blue-50 px-2 py-1 rounded hover:bg-blue-100 transition-colors"
+              >
+                <Plus size={12} />
+                Aufgabe
+              </button>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Standard Functions */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
             {filteredSpecialFunctions.map((func) => {
               const isActive = teacherData.activeSpecialFunctions.includes(func.id);
               const config = teacherData.functionConfig[func.id] || { hours: func.hours };
               
-              // Determine if we should show input for hours (for KLP/SHP/FLP standard functions)
-              const isEditableStandard = func.isStandard && (func.id === 'sf-klp' || func.id === 'sf-shp' || func.id === 'sf-flp');
+              const inputUnit = func.inputUnit || 'Stunden';
+              const displayValue = inputUnit === 'Lektionen' ? (config.hours / 60) : config.hours;
+              const isAgeRelief = func.id === 'sf-age';
+              const isEditable = isActive && !isAgeRelief;
 
               return (
                 <div 
@@ -261,13 +335,15 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
                   `}
                 >
                    <div className="flex items-start gap-3">
-                      {/* Checkbox mainly for non-standard functions, standard ones are auto-selected via logic but can be rendered differently */}
                       <div 
-                        onClick={() => !func.isStandard && toggleSpecialFunction(func.id, !isActive)}
+                        onClick={() => {
+                            if (func.isStandard || isAgeRelief) return;
+                            toggleSpecialFunction(func.id, !isActive)
+                        }}
                         className={`
                           mt-0.5 w-4 h-4 rounded border flex items-center justify-center shrink-0 cursor-pointer
                           ${isActive ? 'bg-red-600 border-red-600 text-white' : 'border-gray-300 bg-white'}
-                          ${func.isStandard ? 'opacity-50 cursor-not-allowed' : ''}
+                          ${(func.isStandard || isAgeRelief) ? 'opacity-50 cursor-not-allowed' : ''}
                         `}
                       >
                         {isActive && <div className="w-2 h-2 bg-white rounded-full" />}
@@ -275,21 +351,27 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
                       
                       <div className="flex-1">
                          <div className="flex justify-between items-start">
-                             <div className="text-sm font-medium text-gray-800 leading-tight">{func.name}</div>
-                             {isEditableStandard && isActive && (
+                             <div className="text-sm font-medium text-gray-800 leading-tight">
+                               {func.name}
+                               {isAgeRelief && isActive && (
+                                 <span className="block text-[10px] text-red-500 font-normal mt-0.5">
+                                    Automatisch ({age >= 60 ? '3' : '1'} WL)
+                                 </span>
+                               )}
+                             </div>
+                             {isEditable && (
                                 <div className="flex items-center gap-1 ml-2">
                                     <input
                                         type="number"
-                                        value={config.hours}
-                                        onChange={(e) => handleFunctionHourChange(func.id, parseFloat(e.target.value) || 0)}
+                                        value={displayValue}
+                                        onChange={(e) => handleFunctionHourChange(func.id, parseFloat(e.target.value) || 0, inputUnit)}
                                         className="w-12 h-6 text-right text-xs border border-gray-300 rounded focus:border-red-500 outline-none px-1"
                                     />
-                                    <span className="text-xs text-gray-500">h</span>
+                                    <span className="text-xs text-gray-500">{inputUnit === 'Lektionen' ? 'WL' : 'h'}</span>
                                 </div>
                              )}
                          </div>
 
-                         {/* SHP Specific Single Class Toggle */}
                          {func.id === 'sf-shp' && isActive && (
                             <div className="mt-2 flex items-center gap-2">
                                 <input 
@@ -305,10 +387,9 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
                             </div>
                          )}
 
-                         {!isEditableStandard && (
+                         {!isEditable && !isAgeRelief && (
                              <div className="text-[10px] text-gray-500 mt-1 flex gap-2">
                                 <span>{func.hours}h</span>
-                                {func.reliefLessons > 0 && <span className="text-red-500 font-medium">+{func.reliefLessons} WL Entl.</span>}
                              </div>
                          )}
                       </div>
@@ -317,6 +398,60 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
               );
             })}
           </div>
+
+          {/* Custom Functions List */}
+          {teacherData.customFunctions.length > 0 && (
+            <div className="space-y-2 border-t border-gray-100 pt-4">
+               <h3 className="text-[10px] font-bold text-gray-400 uppercase mb-2">Eigene Aufgaben</h3>
+               {teacherData.customFunctions.map((cf) => (
+                 <div key={cf.id} className="flex items-center gap-2 bg-blue-50/50 p-2 rounded border border-blue-100">
+                    <input 
+                      type="text"
+                      value={cf.name}
+                      onChange={(e) => handleUpdateCustomFunction(cf.id, 'name', e.target.value)}
+                      placeholder="Bezeichnung..."
+                      className="flex-1 text-xs border border-gray-200 rounded px-2 py-1 focus:border-blue-500 outline-none"
+                    />
+                    
+                    <div className="flex items-center gap-1">
+                       <input 
+                        type="number"
+                        value={cf.value}
+                        onChange={(e) => handleUpdateCustomFunction(cf.id, 'value', parseFloat(e.target.value) || 0)}
+                        className="w-12 text-xs text-right border border-gray-200 rounded px-1 py-1 focus:border-blue-500 outline-none"
+                      />
+                      <select
+                        value={cf.unit}
+                        onChange={(e) => handleUpdateCustomFunction(cf.id, 'unit', e.target.value)}
+                        className="text-xs border border-gray-200 rounded px-1 py-1 focus:border-blue-500 outline-none bg-white"
+                      >
+                        <option value="Stunden">h</option>
+                        <option value="Lektionen">WL</option>
+                      </select>
+                    </div>
+
+                    <select
+                        value={cf.workField}
+                        onChange={(e) => handleUpdateCustomFunction(cf.id, 'workField', e.target.value)}
+                        className="w-24 text-[10px] border border-gray-200 rounded px-1 py-1 focus:border-blue-500 outline-none bg-white truncate"
+                      >
+                        <option value="Unterricht und Klasse">Unterricht</option>
+                        <option value="Lernende und Schulpartner">Lernende</option>
+                        <option value="Schule">Schule</option>
+                        <option value="Lehrperson">Lehrperson</option>
+                    </select>
+
+                    <button 
+                      onClick={() => handleDeleteCustomFunction(cf.id)}
+                      className="text-gray-400 hover:text-red-500 p-1"
+                    >
+                      <X size={14} />
+                    </button>
+                 </div>
+               ))}
+            </div>
+          )}
+
         </div>
 
          {/* Remarks */}

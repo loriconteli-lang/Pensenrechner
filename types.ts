@@ -1,8 +1,11 @@
+
 export type RoleType = 'KLP' | 'FLP' | 'SHP';
 
 export type WorkField = 'Unterricht und Klasse' | 'Lernende und Schulpartner' | 'Schule' | 'Lehrperson' | 'Alle';
 
 export type Municipality = 'Glarus' | 'Glarus Nord' | 'Glarus Süd';
+
+export type InputUnit = 'Stunden' | 'Lektionen';
 
 export interface GlobalSettings {
   annualHours: number;
@@ -18,7 +21,8 @@ export interface SpecialFunction {
   hours: number;
   workField: WorkField;
   allowedRoles: RoleType | 'Alle';
-  isStandard?: boolean; 
+  isStandard?: boolean;
+  inputUnit?: InputUnit; // Default is 'Stunden' if undefined
 }
 
 export interface SpecialFunctionConfig {
@@ -29,14 +33,24 @@ export interface SpecialFunctionConfig {
   };
 }
 
+export interface CustomFunction {
+  id: string;
+  name: string;
+  value: number;
+  unit: InputUnit;
+  workField: WorkField;
+}
+
 export interface TeacherData {
   municipality: Municipality;
   lastName: string;
   firstName: string;
+  birthYear: number;
   role: RoleType;
   teachingLessons: number;
   activeSpecialFunctions: string[]; // IDs of selected functions
   functionConfig: Record<string, SpecialFunctionConfig>; // Store individual hours/settings per function ID
+  customFunctions: CustomFunction[]; // User defined free-text functions
   manualCorrections: Record<string, number>; // Key: Category Name, Value: +/- Hours
   remarks: string;
 }

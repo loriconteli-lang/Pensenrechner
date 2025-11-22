@@ -1,7 +1,8 @@
+
 import React from 'react';
 import { GlobalSettings, SpecialFunction, TeacherData } from '../types';
 import { calculatePensum } from '../utils/calculations';
-import { Building2, User, Calendar } from 'lucide-react';
+import { User } from 'lucide-react';
 
 interface ReportViewProps {
   settings: GlobalSettings;
@@ -18,9 +19,51 @@ export const ReportView: React.FC<ReportViewProps> = ({
 }) => {
   const { distribution, totalHours, pensumPercentage } = calculatePensum(teacherData, settings, specialFunctions);
   const today = new Date().toLocaleDateString('de-CH');
+  
+  // Reference Year for age calculation (should match logic in calculations)
+  const CURRENT_YEAR = 2025;
+  const age = CURRENT_YEAR - teacherData.birthYear;
 
   // Filter active special functions objects for listing
   const activeFunctions = specialFunctions.filter(sf => teacherData.activeSpecialFunctions.includes(sf.id));
+
+  // --- Lesson Breakdown Logic ---
+  const teachingLessons = teacherData.teachingLessons;
+  const lessonItems: { name: string; value: number }[] = [];
+
+  // 1. Age Relief
+  let ageReliefLessons = 0;
+  if (age >= 60) ageReliefLessons = 3;
+  else if (age >= 55) ageReliefLessons = 1;
+  
+  if (ageReliefLessons > 0) {
+    lessonItems.push({ name: `Altersentlastung (${age} Jahre)`, value: ageReliefLessons });
+  }
+
+  // 2. Special Functions (defined in Lessons)
+  activeFunctions.forEach(sf => {
+      if (sf.id === 'sf-age') return; // Handled above
+      if (sf.inputUnit === 'Lektionen') {
+          const config = teacherData.functionConfig[sf.id];
+          // Convert stored hours back to lessons (hours / 60)
+          const hours = config ? config.hours : (sf.reliefLessons * 60);
+          const lessons = hours / 60;
+          if (lessons > 0) {
+              lessonItems.push({ name: sf.name, value: lessons });
+          }
+      }
+  });
+
+  // 3. Custom Functions (defined in Lessons)
+  teacherData.customFunctions.forEach(cf => {
+      if (cf.unit === 'Lektionen' && cf.value > 0) {
+          lessonItems.push({ name: cf.name, value: cf.value });
+      }
+  });
+
+  const totalAdditionalLessons = lessonItems.reduce((acc, item) => acc + item.value, 0);
+  const totalLessons = teachingLessons + totalAdditionalLessons;
+
 
   return (
     <div className="fixed inset-0 z-[100] bg-gray-800/90 overflow-y-auto print:bg-white print:fixed print:inset-0 print:z-[auto] print:overflow-visible">
@@ -51,7 +94,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
         {/* Header */}
         <div className="flex justify-between items-start border-b-4 border-red-600 pb-6 mb-8">
           <div className="flex items-center gap-4">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Wappen_Kanton_Glarus.svg/1200px-Wappen_Kanton_Glarus.svg.png" alt="Wappen Glarus" className="h-16 w-auto" />
+            {/* Logo removed as requested */}
             <div>
               <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Kanton Glarus</div>
               <h1 className="text-2xl font-bold text-gray-900">Pensumsvereinbarung</h1>
@@ -71,8 +114,10 @@ export const ReportView: React.FC<ReportViewProps> = ({
           <div className="col-span-2 bg-gray-50 p-4 rounded-lg border border-gray-200">
             <div className="text-xs text-gray-500 uppercase mb-1 flex items-center gap-1"><User size={12}/> Lehrperson</div>
             <div className="font-bold text-lg">{teacherData.lastName} {teacherData.firstName}</div>
-            <div className="text-sm text-gray-600 mt-1">
-               {teacherData.role === 'KLP' ? 'Klassenlehrperson' : teacherData.role === 'FLP' ? 'Fachlehrperson' : 'Schul. Heilpädagogik'}
+            <div className="text-sm text-gray-600 mt-1 flex items-center gap-2">
+               <span>{teacherData.role === 'KLP' ? 'Klassenlehrperson' : teacherData.role === 'FLP' ? 'Fachlehrperson' : 'Schul. Heilpädagogik'}</span>
+               <span className="text-gray-300">|</span>
+               <span>Jg. {teacherData.birthYear} ({age} Jahre)</span>
             </div>
           </div>
           <div className="bg-red-50 p-4 rounded-lg border border-red-100 text-center">
@@ -80,14 +125,35 @@ export const ReportView: React.FC<ReportViewProps> = ({
              <div className="text-3xl font-bold text-red-700">{pensumPercentage.toFixed(2)}%</div>
           </div>
            <div className="bg-white p-4 rounded-lg border border-gray-200 text-center">
-             <div className="text-xs text-gray-500 uppercase mb-1">Unterricht</div>
-             <div className="text-2xl font-bold text-gray-800">{teacherData.teachingLessons} <span className="text-sm font-normal text-gray-500">WL</span></div>
+             <div className="text-xs text-gray-500 uppercase mb-1">Total Lektionen</div>
+             <div className="text-2xl font-bold text-gray-800">{totalLessons} <span className="text-sm font-normal text-gray-500">WL</span></div>
           </div>
+        </div>
+
+        {/* Lektionen-Übersicht (NEW SECTION) */}
+        <div className="mb-10">
+             <h3 className="text-sm font-bold uppercase text-gray-500 mb-3 border-b border-gray-200 pb-1">Lektionen-Übersicht</h3>
+             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <div className="flex justify-between items-center mb-2 text-sm">
+                    <span className="text-gray-700">Unterricht</span>
+                    <span className="font-bold">{teachingLessons} WL</span>
+                </div>
+                {lessonItems.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center mb-2 text-sm">
+                        <span className="text-gray-600">+ {item.name}</span>
+                        <span className="font-medium">{item.value} WL</span>
+                    </div>
+                ))}
+                <div className="border-t border-gray-300 mt-3 pt-2 flex justify-between items-center">
+                    <span className="font-bold text-gray-900">Total Lektionen</span>
+                    <span className="font-bold text-red-700">{totalLessons} WL</span>
+                </div>
+             </div>
         </div>
 
         {/* Detailed Calculation Table */}
         <div className="mb-10">
-          <h3 className="text-sm font-bold uppercase text-gray-500 mb-3 border-b border-gray-200 pb-1">Detaillierung Arbeitszeit</h3>
+          <h3 className="text-sm font-bold uppercase text-gray-500 mb-3 border-b border-gray-200 pb-1">Detaillierung Arbeitszeit (Stunden)</h3>
           <table className="w-full text-sm border-collapse">
             <thead className="bg-gray-50">
               <tr>
@@ -131,14 +197,26 @@ export const ReportView: React.FC<ReportViewProps> = ({
           </div>
         </div>
 
-        {/* Special Functions List */}
+        {/* Special Functions & Custom Tasks List */}
         <div className="mb-10">
-           <h3 className="text-sm font-bold uppercase text-gray-500 mb-3 border-b border-gray-200 pb-1">Spezialfunktionen & Ämtli</h3>
-          {activeFunctions.length > 0 ? (
+           <h3 className="text-sm font-bold uppercase text-gray-500 mb-3 border-b border-gray-200 pb-1">Details Spezialfunktionen & Aufgaben</h3>
+          {(activeFunctions.length > 0 || teacherData.customFunctions.length > 0) ? (
             <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+              {/* Standard Functions */}
               {activeFunctions.map(sf => {
                  const config = teacherData.functionConfig && teacherData.functionConfig[sf.id];
-                 const effectiveHours = config ? config.hours : sf.hours;
+                 
+                 // Handle Age Relief hours calculation for display
+                 let effectiveHours = 0;
+                 if (sf.id === 'sf-age') {
+                     let reliefLessons = 0;
+                     if (age >= 60) reliefLessons = 3;
+                     else if (age >= 55) reliefLessons = 1;
+                     effectiveHours = reliefLessons * 60;
+                 } else {
+                     effectiveHours = config ? config.hours : sf.hours;
+                 }
+                 
                  const isSingleClass = config?.meta?.isSingleClass;
 
                  return (
@@ -147,12 +225,30 @@ export const ReportView: React.FC<ReportViewProps> = ({
                           <span className="font-medium text-gray-800 block">
                               {sf.name}
                               {isSingleClass && <span className="ml-2 text-xs text-gray-500 italic">(Nur 1 Klasse)</span>}
+                              {sf.id === 'sf-age' && <span className="ml-2 text-xs text-gray-500 italic">({age} Jahre)</span>}
                           </span>
                           <span className="text-xs text-gray-500">{sf.workField}</span>
                         </div>
                         <div className="text-right">
-                           <span className="font-bold block">{effectiveHours} h</span>
-                           {sf.reliefLessons > 0 && <span className="text-xs text-gray-500">{sf.reliefLessons} WL Entlastung</span>}
+                           <span className="font-bold block">{Math.round(effectiveHours)} h</span>
+                        </div>
+                     </div>
+                 );
+              })}
+              
+              {/* Custom Functions */}
+              {teacherData.customFunctions.map(cf => {
+                 const effectiveHours = cf.unit === 'Lektionen' ? cf.value * 60 : cf.value;
+                 return (
+                     <div key={cf.id} className="flex justify-between items-start py-2 border-b border-dotted border-gray-200 text-sm">
+                        <div>
+                          <span className="font-medium text-gray-800 block">
+                              {cf.name}
+                          </span>
+                          <span className="text-xs text-gray-500">{cf.workField}</span>
+                        </div>
+                        <div className="text-right">
+                           <span className="font-bold block">{Math.round(effectiveHours)} h</span>
                         </div>
                      </div>
                  );
