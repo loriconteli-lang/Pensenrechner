@@ -1,5 +1,5 @@
 {
-  "name": "gl-pensum-rechner",
+  "name": "copy-of-gl-pensum-rechner-2.0",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -11,7 +11,9 @@
   "dependencies": {
     "react-dom": "^19.2.0",
     "react": "^19.2.0",
-    "lucide-react": "^0.554.0"
+    "lucide-react": "^0.554.0",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.2"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

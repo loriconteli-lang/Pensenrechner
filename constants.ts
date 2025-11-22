@@ -1,5 +1,5 @@
 
-import { GlobalSettings, SpecialFunction, TeacherData } from './types';
+import { GlobalSettings, SpecialFunction, TeacherData, Folder } from './types';
 
 export const DEFAULT_SETTINGS: GlobalSettings = {
   annualHours: 1890,
@@ -7,6 +7,7 @@ export const DEFAULT_SETTINGS: GlobalSettings = {
     KLP: 26, // 26 Lektionen + 120h KV = 100%
     FLP: 28, // 28 Lektionen = 100%
     SHP: 28, // 28 Lektionen = 100%
+    DaZ: 28, // 28 Lektionen = 100% (Same as SHP)
   },
 };
 
@@ -35,6 +36,15 @@ export const INITIAL_SPECIAL_FUNCTIONS: SpecialFunction[] = [
     hours: 120, // Max 120h, reduces to 60h if single class
     workField: 'Unterricht und Klasse',
     allowedRoles: 'SHP',
+    isStandard: true,
+  },
+  {
+    id: 'sf-daz',
+    name: 'Koordination & Absprachen (DaZ)',
+    reliefLessons: 0,
+    hours: 120, // Max 120h, reduces to 60h if single class
+    workField: 'Unterricht und Klasse',
+    allowedRoles: 'DaZ',
     isStandard: true,
   },
   {
@@ -111,9 +121,15 @@ export const INITIAL_TEACHER_DATA: TeacherData = {
   functionConfig: {
     'sf-klp': { hours: 120 },
     'sf-shp': { hours: 120, meta: { isSingleClass: false } },
+    'sf-daz': { hours: 120, meta: { isSingleClass: false } },
     'sf-flp': { hours: 60 },
   },
   customFunctions: [],
   manualCorrections: {},
   remarks: '',
 };
+
+export const INITIAL_FOLDERS: Folder[] = [
+  { id: 'default', name: 'Allgemein' },
+  { id: 'sj2627', name: 'Schuljahr 2026/27' },
+];

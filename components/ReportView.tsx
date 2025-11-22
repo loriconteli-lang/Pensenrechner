@@ -21,7 +21,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
   const today = new Date().toLocaleDateString('de-CH');
   
   // Reference Year for age calculation (should match logic in calculations)
-  const CURRENT_YEAR = 2025;
+  const CURRENT_YEAR = 2026;
   const age = CURRENT_YEAR - teacherData.birthYear;
 
   // Filter active special functions objects for listing
@@ -98,7 +98,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
             <div>
               <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Kanton Glarus</div>
               <h1 className="text-2xl font-bold text-gray-900">Pensumsvereinbarung</h1>
-              <p className="text-gray-600 font-medium">Schuljahr 2025/26</p>
+              <p className="text-gray-600 font-medium">Schuljahr 2026/27</p>
             </div>
           </div>
           <div className="text-right">
@@ -115,7 +115,11 @@ export const ReportView: React.FC<ReportViewProps> = ({
             <div className="text-xs text-gray-500 uppercase mb-1 flex items-center gap-1"><User size={12}/> Lehrperson</div>
             <div className="font-bold text-lg">{teacherData.lastName} {teacherData.firstName}</div>
             <div className="text-sm text-gray-600 mt-1 flex items-center gap-2">
-               <span>{teacherData.role === 'KLP' ? 'Klassenlehrperson' : teacherData.role === 'FLP' ? 'Fachlehrperson' : 'Schul. Heilpädagogik'}</span>
+               <span>
+                  {teacherData.role === 'KLP' ? 'Klassenlehrperson' : 
+                   teacherData.role === 'FLP' ? 'Fachlehrperson' : 
+                   teacherData.role === 'SHP' ? 'Schul. Heilpädagogik' : 'Deutsch als Zweitsprache (DaZ)'}
+               </span>
                <span className="text-gray-300">|</span>
                <span>Jg. {teacherData.birthYear} ({age} Jahre)</span>
             </div>

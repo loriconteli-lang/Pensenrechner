@@ -44,8 +44,8 @@ export const calculatePensum = (
     { name: 'Lehrperson', hours: baseHoursByField['Lehrperson'], color: 'bg-yellow-400' },
   ];
 
-  // Reference Year for Age Calculation (School Year 2025/26 -> 2025)
-  const referenceYear = 2025;
+  // Reference Year for Age Calculation (School Year 2026/27 -> 2026)
+  const referenceYear = 2026;
   const age = referenceYear - teacherData.birthYear;
 
   // 4. Apply Special Functions

@@ -1,5 +1,5 @@
 
-export type RoleType = 'KLP' | 'FLP' | 'SHP';
+export type RoleType = 'KLP' | 'FLP' | 'SHP' | 'DaZ';
 
 export type WorkField = 'Unterricht und Klasse' | 'Lernende und Schulpartner' | 'Schule' | 'Lehrperson' | 'Alle';
 
@@ -28,7 +28,7 @@ export interface SpecialFunction {
 export interface SpecialFunctionConfig {
   hours: number;
   meta?: {
-    isSingleClass?: boolean; // Specific for SHP
+    isSingleClass?: boolean; // Specific for SHP/DaZ
     [key: string]: any;
   };
 }
@@ -53,6 +53,22 @@ export interface TeacherData {
   customFunctions: CustomFunction[]; // User defined free-text functions
   manualCorrections: Record<string, number>; // Key: Category Name, Value: +/- Hours
   remarks: string;
+}
+
+export interface SavedAgreement {
+  id: string;
+  folderId: string;
+  lastModified: number;
+  data: TeacherData;
+  // Cached values for dashboard performance
+  cachedPensumPercentage: number;
+  cachedTotalHours: number;
+  cachedTotalLessons: number;
+}
+
+export interface Folder {
+  id: string;
+  name: string;
 }
 
 export interface DistributionCategory {

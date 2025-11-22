@@ -20,7 +20,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
 }) => {
   
   // Reference Year for age calculation
-  const CURRENT_YEAR = 2025;
+  const CURRENT_YEAR = 2026;
   const age = CURRENT_YEAR - teacherData.birthYear;
 
   // Auto-select standard function if role changes
@@ -28,11 +28,12 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
     let newActive = [...teacherData.activeSpecialFunctions];
     let changed = false;
 
-    // 1. Standard Roles (KLP/SHP/FLP)
+    // 1. Standard Roles (KLP/SHP/FLP/DaZ)
     const standardFuncs: Record<RoleType, string> = {
       'KLP': 'sf-klp',
       'SHP': 'sf-shp',
-      'FLP': 'sf-flp'
+      'FLP': 'sf-flp',
+      'DaZ': 'sf-daz'
     };
 
     const expectedStandard = standardFuncs[teacherData.role];
@@ -96,7 +97,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
   };
 
   const handleRoleChange = (role: RoleType) => {
-    const newLessons = role === 'KLP' ? 26 : 28;
+    const newLessons = role === 'KLP' ? 26 : 28; // KLP 26, everyone else 28
     onUpdateTeacherData({ ...teacherData, role, teachingLessons: newLessons });
   };
 
@@ -130,15 +131,15 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
     });
   };
 
-  const handleSHPSingleClassChange = (isChecked: boolean) => {
-    const shpId = 'sf-shp';
+  const handleSingleClassChange = (id: string, isChecked: boolean) => {
+    // Applicable for SHP and DaZ
     const newHours = isChecked ? 60 : 120;
     
     onUpdateTeacherData({
       ...teacherData,
       functionConfig: {
         ...teacherData.functionConfig,
-        [shpId]: {
+        [id]: {
           hours: newHours,
           meta: { isSingleClass: isChecked }
         }
@@ -258,7 +259,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
             <div>
               <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">Funktion</label>
               <div className="flex bg-gray-100 p-1 rounded-lg">
-                {(['KLP', 'FLP', 'SHP'] as RoleType[]).map((role) => (
+                {(['KLP', 'FLP', 'SHP', 'DaZ'] as RoleType[]).map((role) => (
                   <button
                     key={role}
                     onClick={() => handleRoleChange(role)}
@@ -268,7 +269,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
                         : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
-                    {role === 'KLP' ? 'Klassenlehrperson' : role === 'FLP' ? 'Fachlehrperson' : 'Heilpädagogik'}
+                    {role === 'KLP' ? 'Klassenlehr.' : role === 'FLP' ? 'Fachlehr.' : role === 'SHP' ? 'Heilpäd.' : 'DaZ'}
                   </button>
                 ))}
               </div>
@@ -325,6 +326,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
               const displayValue = inputUnit === 'Lektionen' ? (config.hours / 60) : config.hours;
               const isAgeRelief = func.id === 'sf-age';
               const isEditable = isActive && !isAgeRelief;
+              const isStandardFunc = func.isStandard;
 
               return (
                 <div 
@@ -337,13 +339,13 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
                    <div className="flex items-start gap-3">
                       <div 
                         onClick={() => {
-                            if (func.isStandard || isAgeRelief) return;
+                            if (isStandardFunc || isAgeRelief) return;
                             toggleSpecialFunction(func.id, !isActive)
                         }}
                         className={`
                           mt-0.5 w-4 h-4 rounded border flex items-center justify-center shrink-0 cursor-pointer
                           ${isActive ? 'bg-red-600 border-red-600 text-white' : 'border-gray-300 bg-white'}
-                          ${(func.isStandard || isAgeRelief) ? 'opacity-50 cursor-not-allowed' : ''}
+                          ${(isStandardFunc || isAgeRelief) ? 'opacity-50 cursor-not-allowed' : ''}
                         `}
                       >
                         {isActive && <div className="w-2 h-2 bg-white rounded-full" />}
@@ -372,16 +374,17 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
                              )}
                          </div>
 
-                         {func.id === 'sf-shp' && isActive && (
+                         {/* Logic for Single Class Checkbox (SHP and DaZ) */}
+                         {(func.id === 'sf-shp' || func.id === 'sf-daz') && isActive && (
                             <div className="mt-2 flex items-center gap-2">
                                 <input 
                                     type="checkbox" 
-                                    id="shp-single-class"
+                                    id={`${func.id}-single-class`}
                                     checked={config.meta?.isSingleClass || false}
-                                    onChange={(e) => handleSHPSingleClassChange(e.target.checked)}
+                                    onChange={(e) => handleSingleClassChange(func.id, e.target.checked)}
                                     className="w-3 h-3 text-red-600 rounded border-gray-300 focus:ring-red-500"
                                 />
-                                <label htmlFor="shp-single-class" className="text-xs text-gray-600 cursor-pointer select-none">
+                                <label htmlFor={`${func.id}-single-class`} className="text-xs text-gray-600 cursor-pointer select-none">
                                     Nur 1 Klasse (max. 60h)
                                 </label>
                             </div>

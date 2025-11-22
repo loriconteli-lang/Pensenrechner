@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { GlobalSettings, SpecialFunction, RoleType, WorkField } from '../types';
 import { Plus, Trash2 } from 'lucide-react';
@@ -71,10 +72,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
           <div className="space-y-4">
             <h3 className="text-sm font-medium text-gray-600 mb-2">Basis-Lektionen (WL)</h3>
-            {(['KLP', 'FLP', 'SHP'] as RoleType[]).map((role) => (
+            {(['KLP', 'FLP', 'SHP', 'DaZ'] as RoleType[]).map((role) => (
               <div key={role} className="flex items-center justify-between">
                 <span className="text-sm text-gray-700">
-                  {role === 'KLP' ? 'Klassenlehrperson (KLP)' : role === 'FLP' ? 'Fachlehrperson (FLP)' : 'Schulischer Heilpädagoge (SHP)'}
+                  {role === 'KLP' ? 'Klassenlehrperson (KLP)' : 
+                   role === 'FLP' ? 'Fachlehrperson (FLP)' : 
+                   role === 'SHP' ? 'Schulischer Heilpädagoge (SHP)' :
+                   'Deutsch als Zweitsprache (DaZ)'}
                 </span>
                 <input
                   type="number"
@@ -162,6 +166,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <option value="KLP">Klassenlehrperson (KLP)</option>
                     <option value="FLP">Fachlehrperson (FLP)</option>
                     <option value="SHP">Schulischer Heilpädagoge (SHP)</option>
+                    <option value="DaZ">Deutsch als Zweitsprache (DaZ)</option>
                   </select>
                 </div>
               </div>
