@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Folder as FolderIcon, Plus, Trash2, Edit, FileText, Download, Search, Users, PieChart, GraduationCap, ArrowRightLeft, X, Filter } from 'lucide-react';
+import { Folder as FolderIcon, Plus, Trash2, Edit, FileText, Download, Search, Users, PieChart, GraduationCap, ArrowRightLeft, X, Filter, List, Columns } from 'lucide-react';
 import { SavedAgreement, Folder, RoleType } from '../types';
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -28,6 +28,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [newFolderName, setNewFolderName] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<RoleType | 'all'>('all');
+  const [showLessonDetails, setShowLessonDetails] = useState(false);
   
   // Move Modal State
   const [moveModal, setMoveModal] = useState<{ isOpen: boolean; agreementId: string | null }>({
@@ -74,8 +75,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   };
 
+  const calculateLessonBreakdown = (agreement: SavedAgreement) => {
+    const teaching = agreement.data.teachingLessons;
+    const age = 2026 - agreement.data.birthYear;
+    let ageRelief = 0;
+    if (age >= 60) ageRelief = 3;
+    else if (age >= 55) ageRelief = 1;
+
+    // Special functions are the remainder of the total cached lessons
+    const total = agreement.cachedTotalLessons;
+    // Round to avoid floating point errors
+    const special = Math.max(0, total - teaching - ageRelief);
+
+    return { teaching, ageRelief, special, total };
+  };
+
   const handleExportPDF = () => {
-    const doc = new jsPDF();
+    const doc = new jsPDF({ orientation: showLessonDetails ? 'landscape' : 'portrait' });
     
     // Title
     doc.setFontSize(18);
@@ -96,15 +112,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     doc.text(`Anzahl Lehrpersonen: ${filteredAgreements.length}`, 140, 46);
 
     // Table
-    const tableColumn = ["Name", "Gemeinde", "Funktion", "Lektionen", "Stunden", "Pensum"];
-    const tableRows = filteredAgreements.map(a => [
-      `${a.data.lastName} ${a.data.firstName}`,
-      a.data.municipality,
-      a.data.role,
-      a.cachedTotalLessons.toFixed(1),
-      Math.round(a.cachedTotalHours).toString(),
-      `${a.cachedPensumPercentage.toFixed(1)}%`
-    ]);
+    let tableColumn: string[] = [];
+    let tableRows: string[][] = [];
+
+    if (showLessonDetails) {
+       tableColumn = ["Name", "Funktion", "Unterricht", "Alter", "Spez.", "Total WL", "Stunden", "Pensum"];
+       tableRows = filteredAgreements.map(a => {
+         const { teaching, ageRelief, special, total } = calculateLessonBreakdown(a);
+         return [
+           `${a.data.lastName} ${a.data.firstName}`,
+           a.data.role,
+           teaching.toFixed(1),
+           ageRelief > 0 ? ageRelief.toString() : '-',
+           special > 0 ? special.toFixed(1) : '-',
+           total.toFixed(1),
+           Math.round(a.cachedTotalHours).toString(),
+           `${a.cachedPensumPercentage.toFixed(1)}%`
+         ];
+       });
+    } else {
+       tableColumn = ["Name", "Gemeinde", "Funktion", "Lektionen", "Stunden", "Pensum"];
+       tableRows = filteredAgreements.map(a => [
+         `${a.data.lastName} ${a.data.firstName}`,
+         a.data.municipality,
+         a.data.role,
+         a.cachedTotalLessons.toFixed(1),
+         Math.round(a.cachedTotalHours).toString(),
+         `${a.cachedPensumPercentage.toFixed(1)}%`
+       ]);
+    }
 
     autoTable(doc, {
       head: [tableColumn],
@@ -217,8 +253,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
              <h1 className="text-2xl font-bold text-gray-900">{activeFolderName}</h1>
              <p className="text-gray-500 text-sm mt-1">{filteredAgreements.length} Datensätze gefunden</p>
           </div>
-          <div className="flex gap-4 items-end">
+          <div className="flex gap-4 items-end flex-wrap justify-end">
              
+             {/* Toggle Lesson Details */}
+             <button
+               onClick={() => setShowLessonDetails(!showLessonDetails)}
+               className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                 showLessonDetails 
+                   ? 'bg-red-50 border-red-200 text-red-700' 
+                   : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+               }`}
+               title={showLessonDetails ? "Kompakte Ansicht" : "Detaillierte Lektionen-Ansicht"}
+             >
+                {showLessonDetails ? <Columns size={16} /> : <List size={16} />}
+                <span>{showLessonDetails ? 'Details' : 'Kompakt'}</span>
+             </button>
+
              {/* Role Filter */}
              <div className="relative">
                  <Filter size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -303,9 +353,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-200">
               <tr>
                 <th className="px-6 py-3 print:px-2">Name</th>
-                <th className="px-6 py-3 print:px-2">Gemeinde</th>
+                {!showLessonDetails && <th className="px-6 py-3 print:px-2">Gemeinde</th>}
                 <th className="px-6 py-3 print:px-2">Funktion</th>
-                <th className="px-6 py-3 text-right print:px-2">Lektionen</th>
+                
+                {showLessonDetails ? (
+                  <>
+                    <th className="px-4 py-3 text-right bg-gray-100/50">Unterricht</th>
+                    <th className="px-4 py-3 text-right bg-gray-100/50">Alter</th>
+                    <th className="px-4 py-3 text-right bg-gray-100/50">Fkt./Aufg.</th>
+                    <th className="px-6 py-3 text-right font-bold bg-gray-100 text-gray-700 border-l border-r border-gray-200">Total WL</th>
+                  </>
+                ) : (
+                   <th className="px-6 py-3 text-right print:px-2">Lektionen</th>
+                )}
+                
                 <th className="px-6 py-3 text-right print:px-2">Stunden</th>
                 <th className="px-6 py-3 text-right print:px-2">Pensum</th>
                 <th className="px-6 py-3 text-right print:hidden">Aktionen</th>
@@ -313,58 +374,83 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredAgreements.length > 0 ? (
-                filteredAgreements.map((agreement) => (
-                  <tr key={agreement.id} className="hover:bg-gray-50 transition-colors print:break-inside-avoid">
-                    <td className="px-6 py-4 font-medium text-gray-900 print:px-2 print:py-2">
-                      {agreement.data.lastName} {agreement.data.firstName}
-                    </td>
-                    <td className="px-6 py-4 text-gray-600 print:px-2 print:py-2">
-                      {agreement.data.municipality}
-                    </td>
-                    <td className="px-6 py-4 text-gray-600 print:px-2 print:py-2">
-                       <span className="inline-block px-2 py-1 bg-gray-100 rounded text-xs font-medium text-gray-700 border border-gray-200 print:border-0 print:bg-transparent print:p-0">
-                         {agreement.data.role}
-                       </span>
-                    </td>
-                    <td className="px-6 py-4 text-right font-mono text-gray-700 print:px-2 print:py-2">
-                      {agreement.cachedTotalLessons.toFixed(1)}
-                    </td>
-                    <td className="px-6 py-4 text-right font-mono text-gray-700 print:px-2 print:py-2">
-                      {Math.round(agreement.cachedTotalHours)}
-                    </td>
-                    <td className="px-6 py-4 text-right font-bold text-gray-900 print:px-2 print:py-2">
-                      {agreement.cachedPensumPercentage.toFixed(1)}%
-                    </td>
-                    <td className="px-6 py-4 text-right print:hidden">
-                       <div className="flex justify-end gap-2">
-                          <button 
-                            onClick={() => openMoveModal(agreement.id)}
-                            className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                            title="In anderen Ordner verschieben"
-                          >
-                            <ArrowRightLeft size={16} />
-                          </button>
-                          <button 
-                            onClick={() => onLoadAgreement(agreement)}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                            title="Öffnen/Bearbeiten"
-                          >
-                            <Edit size={16} />
-                          </button>
-                          <button 
-                            onClick={() => onDeleteAgreement(agreement.id)}
-                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                            title="Löschen"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                       </div>
-                    </td>
-                  </tr>
-                ))
+                filteredAgreements.map((agreement) => {
+                  const breakdown = calculateLessonBreakdown(agreement);
+                  
+                  return (
+                    <tr key={agreement.id} className="hover:bg-gray-50 transition-colors print:break-inside-avoid">
+                      <td className="px-6 py-4 font-medium text-gray-900 print:px-2 print:py-2">
+                        {agreement.data.lastName} {agreement.data.firstName}
+                      </td>
+                      {!showLessonDetails && (
+                        <td className="px-6 py-4 text-gray-600 print:px-2 print:py-2">
+                          {agreement.data.municipality}
+                        </td>
+                      )}
+                      <td className="px-6 py-4 text-gray-600 print:px-2 print:py-2">
+                         <span className="inline-block px-2 py-1 bg-gray-100 rounded text-xs font-medium text-gray-700 border border-gray-200 print:border-0 print:bg-transparent print:p-0">
+                           {agreement.data.role}
+                         </span>
+                      </td>
+
+                      {showLessonDetails ? (
+                        <>
+                           <td className="px-4 py-4 text-right text-gray-600 bg-gray-50/30">
+                              {breakdown.teaching.toFixed(1)}
+                           </td>
+                           <td className="px-4 py-4 text-right text-gray-600 bg-gray-50/30">
+                              {breakdown.ageRelief > 0 ? breakdown.ageRelief : '-'}
+                           </td>
+                           <td className="px-4 py-4 text-right text-gray-600 bg-gray-50/30">
+                              {breakdown.special > 0 ? breakdown.special.toFixed(1) : '-'}
+                           </td>
+                           <td className="px-6 py-4 text-right font-bold text-gray-900 bg-gray-50 border-l border-r border-gray-100">
+                              {breakdown.total.toFixed(1)}
+                           </td>
+                        </>
+                      ) : (
+                         <td className="px-6 py-4 text-right font-mono text-gray-700 print:px-2 print:py-2">
+                            {agreement.cachedTotalLessons.toFixed(1)}
+                         </td>
+                      )}
+
+                      <td className="px-6 py-4 text-right font-mono text-gray-700 print:px-2 print:py-2">
+                        {Math.round(agreement.cachedTotalHours)}
+                      </td>
+                      <td className="px-6 py-4 text-right font-bold text-gray-900 print:px-2 print:py-2">
+                        {agreement.cachedPensumPercentage.toFixed(1)}%
+                      </td>
+                      <td className="px-6 py-4 text-right print:hidden">
+                         <div className="flex justify-end gap-2">
+                            <button 
+                              onClick={() => openMoveModal(agreement.id)}
+                              className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                              title="In anderen Ordner verschieben"
+                            >
+                              <ArrowRightLeft size={16} />
+                            </button>
+                            <button 
+                              onClick={() => onLoadAgreement(agreement)}
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                              title="Öffnen/Bearbeiten"
+                            >
+                              <Edit size={16} />
+                            </button>
+                            <button 
+                              onClick={() => onDeleteAgreement(agreement.id)}
+                              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                              title="Löschen"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                         </div>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-400 italic">
+                  <td colSpan={showLessonDetails ? 9 : 7} className="px-6 py-12 text-center text-gray-400 italic">
                     Keine Vereinbarungen in diesem Ordner gefunden.
                   </td>
                 </tr>

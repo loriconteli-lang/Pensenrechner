@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LayoutGrid, Settings as SettingsIcon, Save, FileText, ChevronLeft, FolderOpen } from 'lucide-react';
 import { PlannerView } from './components/PlannerView';
 import { SettingsView } from './components/SettingsView';
@@ -22,9 +22,39 @@ const App: React.FC = () => {
   const [teacherData, setTeacherData] = useState<TeacherData>(INITIAL_TEACHER_DATA);
   const [currentAgreementId, setCurrentAgreementId] = useState<string | null>(null);
 
-  // Storage State (Simulated)
-  const [folders, setFolders] = useState<Folder[]>(INITIAL_FOLDERS);
-  const [agreements, setAgreements] = useState<SavedAgreement[]>([]);
+  // --- Storage State (with LocalStorage Persistence) ---
+
+  // Load Folders from LocalStorage or use Defaults
+  const [folders, setFolders] = useState<Folder[]>(() => {
+    try {
+      const saved = localStorage.getItem('gl-pensum-folders');
+      return saved ? JSON.parse(saved) : INITIAL_FOLDERS;
+    } catch (error) {
+      console.error("Failed to load folders from local storage", error);
+      return INITIAL_FOLDERS;
+    }
+  });
+
+  // Load Agreements from LocalStorage or use Empty
+  const [agreements, setAgreements] = useState<SavedAgreement[]>(() => {
+    try {
+      const saved = localStorage.getItem('gl-pensum-agreements');
+      return saved ? JSON.parse(saved) : [];
+    } catch (error) {
+      console.error("Failed to load agreements from local storage", error);
+      return [];
+    }
+  });
+
+  // Persist Folders whenever they change
+  useEffect(() => {
+    localStorage.setItem('gl-pensum-folders', JSON.stringify(folders));
+  }, [folders]);
+
+  // Persist Agreements whenever they change
+  useEffect(() => {
+    localStorage.setItem('gl-pensum-agreements', JSON.stringify(agreements));
+  }, [agreements]);
 
   // --- Actions ---
 
