@@ -52,11 +52,6 @@ export const calculatePensum = (
   teacherData.activeSpecialFunctions.forEach(sfId => {
     const func = specialFunctions.find(f => f.id === sfId);
     if (func) {
-      const category = distribution.find(c => c.name === func.workField);
-      
-      // Determine Hours
-      let hoursToAdd = 0;
-
       // Special Case: Altersentlastung (sf-age)
       if (sfId === 'sf-age') {
         let reliefLessons = 0;
@@ -65,29 +60,52 @@ export const calculatePensum = (
         } else if (age >= 55) {
           reliefLessons = 1;
         }
-        // 1 WL = 60h for relief in Glarus model (Context from prompt)
-        hoursToAdd = reliefLessons * 60;
+
+        if (reliefLessons > 0) {
+          // LOGIC CHANGE:
+          // 1. Remove the time for these lessons from "Unterricht und Klasse".
+          //    We assume the 'teachingLessons' input includes these relief lessons as "Soll".
+          //    So we assume 82% of a lesson's value was allocated to Teaching.
+          const hoursToRemoveFromTeaching = reliefLessons * hoursPerLesson * DISTRIBUTION_SHARES['Unterricht und Klasse'];
+          
+          const teachingCat = distribution.find(c => c.name === 'Unterricht und Klasse');
+          if (teachingCat) {
+             teachingCat.hours -= hoursToRemoveFromTeaching;
+             // correction is strictly for additions usually, but here we technically reduced the base load.
+             // We won't track negative correction for display simplicity in the "Zusatz" column unless desired.
+             // But to make the math work for "Base" + "Zusatz" = "Total", let's adjust the hours directly.
+          }
+
+          // 2. Add fixed 60h per relief lesson to "Lehrperson"
+          const hoursToAdd = reliefLessons * 60;
+          const teacherCat = distribution.find(c => c.name === 'Lehrperson');
+          if (teacherCat) {
+             teacherCat.hours += hoursToAdd;
+             teacherCat.correction = (teacherCat.correction || 0) + hoursToAdd;
+          }
+        }
+
       } else {
-        // Normal Logic
+        // Normal Logic for other functions
+        const category = distribution.find(c => c.name === func.workField);
+        
+        let hoursToAdd = 0;
         const config = teacherData.functionConfig && teacherData.functionConfig[sfId];
         
         if (config) {
-           // Use manually entered hours (or calculation based on meta)
            hoursToAdd = config.hours;
         } else {
-           // Fallback to defaults
            if (func.inputUnit === 'Lektionen') {
-              // If no config but unit is lessons, use default reliefLessons * 60
               hoursToAdd = func.reliefLessons * 60;
            } else {
               hoursToAdd = func.hours;
            }
         }
-      }
 
-      if (category && hoursToAdd > 0) {
-        category.hours += hoursToAdd;
-        category.correction = (category.correction || 0) + hoursToAdd;
+        if (category && hoursToAdd > 0) {
+          category.hours += hoursToAdd;
+          category.correction = (category.correction || 0) + hoursToAdd;
+        }
       }
     }
   });
@@ -96,7 +114,6 @@ export const calculatePensum = (
   teacherData.customFunctions.forEach(cf => {
     const category = distribution.find(c => c.name === cf.workField);
     if (category) {
-      // Convert lessons to hours if needed (Factor 60 based on previous logic)
       const hoursToAdd = cf.unit === 'Lektionen' ? cf.value * 60 : cf.value;
       
       if (hoursToAdd > 0) {

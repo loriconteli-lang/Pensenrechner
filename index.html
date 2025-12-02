@@ -21,10 +21,10 @@
           print-color-adjust: exact;
           -webkit-print-color-adjust: exact;
         }
-        /* Ensure standard page margins */
+        /* Minimize browser margins so we can control it via CSS padding in the component */
         @page {
           size: A4;
-          margin: 10mm;
+          margin: 0;
         }
         /* General Print Hiding */
         .print\:hidden {
@@ -37,6 +37,7 @@
            overflow: visible;
            background: white;
            height: auto;
+           display: block;
         }
         
         /* Ensure full width for tables */
